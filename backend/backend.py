@@ -20,14 +20,18 @@ def manim_gen_prompt(user_query):
 Create a Manim animation for the following math problem: {user_query}
 Bash commands should be enclosed by ```bash ``` and python code should be enclosed by ```python ```
 
+
 You should write a self-contained class that can then be run to create a short-explanatory video. Your generated code should have no issues with compilation or execution and should include any relevant imports.
 Be super sure that the video doesn't include overlapping elements. If you run out of space, clear the screen.
 Ensure all objects remain fully visible within the default frame. Center all objects and scale them if necessary. Consider using scale_to_fit_width and scale_to_fit_height to avoid writing stuff out of frame.
 Feel free to incorporate the layout manager into your code.
 
-Please include the bash command to run the script and the python code itself. In the bash command to render the code, choose a frame rate of 25 set the no preview flag to true.
+
+Please include the bash command to run the script and the python code itself. In the bash command to render the code, choose a frame rate of 25.
+Please make the command start with manim -ql --fps 15
 """
     )
+
 
 def generate_manim_code(user_query):
     user_prompt = manim_gen_prompt(user_query)
@@ -64,7 +68,7 @@ def generate_manim_code(user_query):
         model="gpt-4.1",
         messages=messages,
         temperature=0,
-        max_tokens=2000,
+        max_tokens=1500,
     )
 
     gpt_response = response.choices[0].message.content
@@ -214,34 +218,6 @@ def generate_voiceover_from_manim_code(manim_code: str, output_dir="outputs", fi
     return output_path
 
 
-#for combining voiceover with audio
-def merge_audio_with_video(video_path, audio_path, output_path=None):
-    from pathlib import Path
-    import subprocess
-
-    if not output_path:
-        output_path = str(Path(video_path).with_name("final_with_audio.mp4"))
-
-    command = [
-        "ffmpeg",
-        "-y",
-        "-i", video_path,
-        "-i", audio_path,
-        "-c:v", "libx264",   # re-encode video
-        "-c:a", "aac",       # re-encode audio
-        "-b:a", "192k",      # audio bitrate
-        "-shortest",
-        output_path
-    ]
-
-    try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(f"✅ Created video with sound: {output_path}")
-        return output_path
-    except subprocess.CalledProcessError as e:
-        print("❌ FFmpeg failed:", e.stderr.decode())
-        return None
-
 
 
 def pipeline(user_query):
@@ -263,8 +239,6 @@ def pipeline(user_query):
 
 
     voiceover_file = generate_voiceover_from_manim_code(manim_code)
-
-    # output_path = merge_audio_with_video(video_path, voiceover_file)
 
     return video_path, voiceover_file
 
