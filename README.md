@@ -1,0 +1,2 @@
+# mathinq
+hacknyu project

@@ -1,0 +1,25 @@
+openai>=1.14.0
+manim>=0.18.1
+numpy>=1.24.0
+Pillow>=10.0.0
+pycairo>=1.24.0
+pydub>=0.25.1
+tqdm>=4.66.0
+requests>=2.31.0
+moviepy>=1.0.3
+
+# For ffmpeg subprocess calls — not a pip package, but these help moviepy/manim
+imageio>=2.33.0
+imageio-ffmpeg>=0.5.1
+
+# If you render LaTeX in Manim (most people do)
+PyLaTeX>=1.4.2
+
+# General utilities
+python-dotenv>=1.0.0
+
+pandas
+
+fastapi
+uvicorn
+python-multipart
