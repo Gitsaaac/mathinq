@@ -4,77 +4,13 @@ import subprocess
 import re
 from pathlib import Path
 import tempfile
+import time
 
 from dotenv import load_dotenv
 load_dotenv()
 
 
 client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-
-# def identify_keywords_prompt(query):
-#     return f"""For the following query please identify the key mathematical concepts being described and return them in the form
-#     of a numbered list. The query will be a question about one or more mathematical concepts and your job is to identify the top three
-#     most important concepts based on the query and return them in the following format.
-    
-#     1. Concept_1
-#     2. Concept_2
-#     3. Concept_3
-
-
-#     If there are fewer than three concepts mentioned in the query, then only return the 1 or 2 mentioned concepts.
-#     Return only the numbered list of concepts and nothing else.
-
-#     Here is the query:
-
-#     {query}
-#     """
-
-# def get_keywords(query):
-#     prompt =identify_keywords_prompt(query)
-#     response = client.chat.completions.create(
-#         model="gpt-4.1",
-#         messages=[{"role": "user", "content": prompt}],
-#         temperature=0.1,
-#         max_tokens=1500,
-#     )
-#     gpt_response = response.choices[0].message.content
-
-#     return gpt_response
-
-
-
-# def manim_gen_prompt(user_query):
-#     # return f"""Your job is to write a Python Manim class to explain the concept listed below. You should write a self contained class that can then
-#     # be run and to create a short explanatory video. Your generated code should have no isssues in compilation or execution and should include any relevant imports.
-    
-#     # Please include the bash command to run the script and the python code itself.
-
-#     # Here are the user query:
-
-#     # {user_query}
-#     # """
-#     # return f"""Your job is to write a Python Manim class to explain the users question listed below like a math teacher would explain it to a student. 
-#     # {user_query}
-#     # Be super sure that the video doesn't include overlapping elements and everything that you draw is in a new area. If you run out of room, clear the screen.
-#     # Be super sure that nothing is out of the frame of the video. Do this by making nothing close to the edges.
-#     # Please include the python code itself and the bash command at the bottom to run the script
-#     # """
-#     return f"""Your job is to write a Python Manim class to explain {user_query}
-
-#     like a teacher would explain to a student. Make it brief.
-
-#     Please include the bash command to run the script and the python code itself. Include all relevant imports and ensure that the code compiles and renders and executes without any issues.
-
-#     You should write a self-contained class that can then be run to create a short-explanatory video. Your generated code should have no issues with compilation or execution and should include any relevant imports.
-#     Be super sure that the video doesn't include overlapping elements. If you run out of space, clear the screen.
-#     Ensure all objects remain fully visible within the default frame. Center all objects and scale them if necessary. Consider using scale_to_fit_width and scale_to_fit_height to avoid writing stuff out of frame.
-
-#     Bash commands should be enclosed by ```bash ``` and python code should be enclosed by ```python ```. """
-
-# # def get_system_prompt():
-# #     return f"""You are a programmer writing a Manim class to explain a concept to a student.
-# #     """
    
 from manim_examples import EXAMPLES  
 
@@ -89,7 +25,7 @@ Be super sure that the video doesn't include overlapping elements. If you run ou
 Ensure all objects remain fully visible within the default frame. Center all objects and scale them if necessary. Consider using scale_to_fit_width and scale_to_fit_height to avoid writing stuff out of frame.
 Feel free to incorporate the layout manager into your code.
 
-Please include the bash command to run the script and the python code itself. In the bash command to render the code, choose a frame rate of 35.
+Please include the bash command to run the script and the python code itself. In the bash command to render the code, choose a frame rate of 25 set the no preview flag to true.
 """
     )
 
@@ -108,8 +44,6 @@ def generate_manim_code(user_query):
         },
     ]
 
-    # === Add all few-shot examples from manim_examples.py ===
-    # We’ll take the first 2, since you said 2 examples.
     for example in EXAMPLES[:2]:
         messages.append({
             "role": "user",
@@ -246,6 +180,8 @@ def generate_voiceover_from_manim_code(manim_code: str, output_dir="outputs", fi
     the animation for a math learner. Make it sound like a teacher explaining a concept. 
     Get the timing correct in what you're saying and make the voiceover the same duration (roughly) as the video.
 
+    Be sure to only include the actual spoken content and not any other text that isn't meant to actually be said.
+
     Manim Code:
     ```
     {manim_code}
@@ -310,12 +246,21 @@ def merge_audio_with_video(video_path, audio_path, output_path=None):
 
 def pipeline(user_query):
     # keywords = get_keywords(user_query)
+    start_time = time.perf_counter()
     response = generate_manim_code(user_query)
+    end_time = time.perf_counter()
+
+    print("ELAPSED TIME GENERATION:" + str(end_time - start_time))
 
     manim_code = get_python_code(response)
     manim_command = get_manim_command(response)
 
+    start_time = time.perf_counter()
     video_path = generate_manim_video(manim_code, manim_command)
+    end_time = time.perf_counter()
+
+    print("ELAPSED TIME GENERATION:" + str(end_time - start_time))
+
 
     voiceover_file = generate_voiceover_from_manim_code(manim_code)
 
