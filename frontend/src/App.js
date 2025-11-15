@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import "./App.css";
 
 const BACKEND_URL = "http://localhost:8000"; // change if your backend is on a different host/port
 
@@ -8,6 +9,9 @@ function App() {
   const [audioUrl, setAudioUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const videoRef = useRef(null);
+  const audioRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +27,6 @@ function App() {
     try {
       setLoading(true);
 
-      // Your FastAPI endpoint expects `query: str`, taken from the query params
       const res = await fetch(
         `${BACKEND_URL}/generate?query=${encodeURIComponent(prompt)}`,
         {
@@ -37,7 +40,6 @@ function App() {
       }
 
       const data = await res.json();
-      // Backend returns: { video_url: "/video/...", audio_url: "/audio/..." }
       setVideoUrl(`${BACKEND_URL}${data.video_url}`);
       setAudioUrl(`${BACKEND_URL}${data.audio_url}`);
     } catch (err) {
@@ -48,127 +50,144 @@ function App() {
     }
   };
 
+  // --- Sync helpers: video is the "master" ---
+
+  const handleVideoPlay = () => {
+    if (!videoRef.current || !audioRef.current) return;
+    try {
+      audioRef.current.currentTime = videoRef.current.currentTime;
+      audioRef.current.play();
+    } catch (err) {
+      console.error("Audio play error:", err);
+    }
+  };
+
+  const handleVideoPause = () => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+  };
+
+  // Keep audio tightly synced to video while playing
+  const handleVideoTimeUpdate = () => {
+    if (!videoRef.current || !audioRef.current) return;
+    const v = videoRef.current;
+    const a = audioRef.current;
+    const diff = Math.abs(a.currentTime - v.currentTime);
+
+    // Adjust only if they drift more than a tiny threshold
+    if (diff > 0.1) {
+      a.currentTime = v.currentTime;
+    }
+  };
+
+  const hasMedia = Boolean(videoUrl || audioUrl);
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "2rem",
-        backgroundColor: "#0f172a",
-        color: "#e5e7eb",
-        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "800px",
-          margin: "0 auto",
-          padding: "2rem",
-          backgroundColor: "#020617",
-          borderRadius: "1rem",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
-        }}
-      >
-        <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
-          🧠 Math → 🎬 Manim → 🎧 Voiceover
-        </h1>
-        <p style={{ marginBottom: "1.5rem", color: "#9ca3af" }}>
-          Type what you need help with (e.g. <em>"systems of linear equations"</em>),
-          and the backend will generate a Manim video and a voiceover.
-        </p>
+    <div className="app-root">
+      <div className="app-gradient" />
 
-        <form onSubmit={handleSubmit} style={{ marginBottom: "1.5rem" }}>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={3}
-            placeholder="What do you need help with?"
-            style={{
-              width: "100%",
-              padding: "0.75rem 1rem",
-              borderRadius: "0.75rem",
-              border: "1px solid #1f2937",
-              backgroundColor: "#020617",
-              color: "#e5e7eb",
-              resize: "vertical",
-              outline: "none",
-              marginBottom: "1rem",
-            }}
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: "0.6rem 1.4rem",
-              borderRadius: "999px",
-              border: "none",
-              background: loading ? "#4b5563" : "#22c55e",
-              color: "#020617",
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              transition: "transform 0.1s ease, box-shadow 0.1s ease",
-              boxShadow: loading
-                ? "none"
-                : "0 10px 20px rgba(34,197,94,0.25)",
-            }}
-          >
-            {loading ? "Generating..." : "Generate Video & Audio"}
-          </button>
-        </form>
-
-        {error && (
-          <div
-            style={{
-              marginBottom: "1.5rem",
-              padding: "0.75rem 1rem",
-              borderRadius: "0.75rem",
-              backgroundColor: "#7f1d1d",
-              color: "#fee2e2",
-              fontSize: "0.9rem",
-            }}
-          >
-            ⚠️ {error}
-          </div>
-        )}
-
-        {videoUrl && (
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h2 style={{ marginBottom: "0.5rem", fontSize: "1.2rem" }}>
-              🎬 Generated Video
-            </h2>
-            <video
-              src={videoUrl}
-              controls
-              style={{
-                width: "100%",
-                borderRadius: "0.75rem",
-                border: "1px solid #1f2937",
-                backgroundColor: "black",
-              }}
-            />
-          </div>
-        )}
-
-        {audioUrl && (
+      <div className="app-shell">
+        <header className="app-header">
           <div>
-            <h2 style={{ marginBottom: "0.5rem", fontSize: "1.2rem" }}>
-              🎧 Generated Audio
-            </h2>
-            <audio
-              src={audioUrl}
-              controls
-              style={{
-                width: "100%",
-              }}
-            />
+            <h1 className="app-title">MathInq</h1>
+            <p className="app-subtitle">Redefining mathematical education</p>
           </div>
-        )}
+          <div className="badge beta-badge">Beta</div>
+        </header>
 
-        {!loading && !videoUrl && !audioUrl && !error && (
-          <p style={{ marginTop: "1rem", color: "#6b7280", fontSize: "0.9rem" }}>
-            After you click <strong>Generate</strong>, the video and audio will
-            appear here.
-          </p>
-        )}
+        <main className="app-main">
+          {/* Top input card */}
+          <section className="card prompt-card">
+            <form onSubmit={handleSubmit} className="prompt-form">
+              <label className="field-label" htmlFor="prompt">
+                What do you want explained?
+              </label>
+              <textarea
+                id="prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={3}
+                placeholder='e.g. "Explain the difference between mean, median, and mode"'
+                className="prompt-input"
+              />
+              <div className="prompt-footer">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`primary-button ${loading ? "is-loading" : ""}`}
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner" />
+                      Generating…
+                    </>
+                  ) : (
+                    "Generate Video & Audio"
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {error && (
+              <div className="alert alert-error">
+                <span className="alert-icon">⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+          </section>
+
+          {/* Bottom output card: always visible */}
+          <section className="card output-card">
+            <div className="output-header">
+              <h2 className="section-title">Your Generated Lesson</h2>
+              <p className="section-subtitle">
+                MathInq creates a Manim animation with audio custom for you
+              </p>
+            </div>
+
+            {/* Loading state */}
+            {loading && (
+              <div className="output-loading">
+                <div className="loading-orb" />
+                <p className="loading-text">Generating your lesson…</p>
+                <p className="loading-subtext">
+                  Building the animation and syncing the voiceover.
+                </p>
+              </div>
+            )}
+
+            {/* Placeholder before any generation */}
+            {!loading && !hasMedia && !error && (
+              <div className="output-placeholder">
+                <div className="placeholder-video" />
+                <p className="placeholder-text">
+                  Your explainer video will appear here after you submit a topic above.
+                </p>
+              </div>
+            )}
+
+            {/* Actual video once ready */}
+            {!loading && videoUrl && (
+              <div className="video-wrapper">
+                <video
+                  ref={videoRef}
+                  src={videoUrl}
+                  controls
+                  onPlay={handleVideoPlay}
+                  onPause={handleVideoPause}
+                  onTimeUpdate={handleVideoTimeUpdate}
+                />
+              </div>
+            )}
+
+            {/* Hidden audio used only for sync */}
+            {audioUrl && <audio ref={audioRef} src={audioUrl} />}
+          </section>
+        </main>
+
+        <footer className="app-footer">
+          <span className="footer-text">Powered by Manim</span>
+        </footer>
       </div>
     </div>
   );
