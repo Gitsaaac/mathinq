@@ -5,5 +5,6 @@ Mathinq is a tool enabling students to generate personalized math videos to expl
 
 # Running
 pip install -r requirements.txt
-./.launch.sh
+chmod +x .launch.sh
+./launch.sh
 
