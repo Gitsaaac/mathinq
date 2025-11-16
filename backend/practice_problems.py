@@ -1,4 +1,4 @@
-#practice_problems.py
+# practice_problems.py
 import openai
 import os
 import re
@@ -46,6 +46,17 @@ and the LaTeX answer code.
 
 All math should be inline math using $...$ or simply plain LaTeX.
 
+Please output ONLY the following, in this exact order:
+{{PROBLEM}}
+...LaTeX problem...
+{{PROBLEM}}
+
+{{ANSWER}}
+...LaTeX answer...
+{{ANSWER}}
+
+Do NOT include any markdown fences, explanations, comments, or extra text before, after, or in between these tags.
+
 Here is the user query:
 
 {user_query}
@@ -59,7 +70,7 @@ def get_practice_problem(user_query: str) -> str:
         messages=[
             {"role": "user", "content": format_practice_problems_prompt(user_query)}
         ],
-        max_tokens=150,
+        max_tokens=300,  # bumped up to reduce truncation issues
         temperature=0.3,
     )
     return response.choices[0].message.content
@@ -74,6 +85,12 @@ def extract_problem(text: str) -> str | None:
     match = re.search(pattern, text, re.DOTALL)
     if match:
         return match.group(1).strip()
+
+    # Fallback: if only one {PROBLEM} is present, take everything after it
+    fallback = re.search(r"\{PROBLEM\}(.*)", text, re.DOTALL)
+    if fallback:
+        return fallback.group(1).strip()
+
     return None
 
 
@@ -81,11 +98,20 @@ def extract_answer(text: str) -> str | None:
     """
     Extracts the content inside {{ANSWER}} ... {{ANSWER}}.
     Returns the stripped text or None if not found.
+    - Ideal: {ANSWER} ... {ANSWER}
+    - Fallback: if closing tag missing, take everything after first {ANSWER}
     """
+    # Ideal case: opening + closing tags
     pattern = r"\{ANSWER\}(.*?)\{ANSWER\}"
     match = re.search(pattern, text, re.DOTALL)
     if match:
         return match.group(1).strip()
+
+    # Fallback: only opening tag present
+    fallback = re.search(r"\{ANSWER\}(.*)", text, re.DOTALL)
+    if fallback:
+        return fallback.group(1).strip()
+
     return None
 
 
@@ -155,7 +181,7 @@ def latex_to_image_matplotlib(latex_expression: str, filename: str | None = None
         fontsize=22,
         ha="center",
         va="center",
-        color="white"
+        color="white",
     )
 
     plt.axis("off")
@@ -188,7 +214,9 @@ def render_answer(problem_and_answer: str) -> str:
     """
     answer = extract_answer(problem_and_answer)
     if not answer:
-        raise ValueError("No {{ANSWER}} section found.")
+        # You can either raise, or use a placeholder.
+        # raise ValueError("No {{ANSWER}} section found.")
+        answer = "No answer provided."
     latex = answer.strip()
     return latex_to_image_matplotlib(latex)
 
