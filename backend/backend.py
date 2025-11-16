@@ -1,3 +1,4 @@
+#backend.py
 import openai
 import os
 import subprocess
@@ -5,6 +6,7 @@ import re
 from pathlib import Path
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -34,6 +36,7 @@ Please make the command start with manim -ql -r 480, 270 --fps 10
 
 
 def generate_manim_code(user_query):
+    #generating the manim code using the prompt below
     user_prompt = manim_gen_prompt(user_query)
 
     messages = [
@@ -71,7 +74,6 @@ def generate_manim_code(user_query):
             "content": example["code"],
         })
 
-    # === Real user request ===
     messages.append({
         "role": "user",
         "content": user_prompt,
@@ -93,24 +95,20 @@ def generate_manim_code(user_query):
 
 def get_python_code(response: str) -> str:
     """
-    Extracts the Python code block from a GPT response safely.
-    Handles cases where the block is incomplete or missing closing backticks.
+    extracts python code from gpt output
     """
-    # Try to match a complete ```python ... ``` fenced block
     match = re.search(r"```python\s*(.*?)\s*```", response, re.DOTALL)
     if match:
         code = match.group(1).strip()
         print("✅ Extracted complete Python code block.")
         return code
 
-    # Fallback: handle open but unclosed ```python block
     if "```python" in response:
         start = response.index("```python") + len("```python")
         code = response[start:].strip()
         print("⚠️ Warning: Detected unclosed Python code block — using partial content.")
         return code
 
-    # Final fallback: try detecting bare Python class/def if model didn’t fence
     match = re.search(r"(class\s+\w+\(.*?\):.*)", response, re.DOTALL)
     if match:
         code = match.group(1).strip()
@@ -121,17 +119,14 @@ def get_python_code(response: str) -> str:
 
 def get_manim_command(response: str):
     """
-    Extracts the Manim bash command (like 'manim -pql file.py SceneName')
-    from the GPT response safely, even if formatting is inconsistent.
+    extracting manim command from gpt output
     """
-    # First try fenced code block
     match = re.search(r"```bash\s*(.*?)\s*```", response, re.DOTALL)
     if match:
         command = match.group(1).strip()
         print(f"✅ Extracted Manim command: {command}")
         return command
 
-    # Fallback: search for 'manim ' line in plain text
     match = re.search(r"manim\s+[^\n]+", response)
     if match:
         command = match.group(0).strip()
@@ -148,18 +143,16 @@ def generate_manim_video(code: str, command: str, output_dir="outputs"):
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    # 1. Create temporary Python file
     with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tmp_file:
         tmp_file.write(code.encode("utf-8"))
         tmp_filename = tmp_file.name
 
-    # 2. Replace the filename in the Manim command
     parts = command.split()
     for i, p in enumerate(parts):
         if p.endswith(".py"):
             parts[i] = tmp_filename
 
-    # 3. Run the Manim CLI command
+    # run manim command w/ subprocess
     try:
         subprocess.run(parts, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
@@ -167,8 +160,7 @@ def generate_manim_video(code: str, command: str, output_dir="outputs"):
         print(e.stderr)
         return None
 
-    # 4. Move the generated video to output_dir
-    # Find the only .mp4 in the Manim media/videos folder
+    # getting the video file
     videos = list(Path("media/videos").rglob("*.mp4"))
     if not videos:
         print("⚠️ No video file found.")
@@ -190,7 +182,7 @@ def generate_voiceover_from_manim_code(manim_code: str, output_dir="outputs", fi
     client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     os.makedirs(output_dir, exist_ok=True)
 
-    # Step 1 — create narration text
+    # prompt for generating voiceover text
     prompt = f"""
     You are an educational narrator. Based on the following Manim Python code, 
     write a clear, very concise spoken explanation (the manim animations will do most of the explaining) that could accompany 
@@ -210,19 +202,19 @@ def generate_voiceover_from_manim_code(manim_code: str, output_dir="outputs", fi
         model="gpt-4.1",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
-        max_tokens=150,
+        max_tokens=200,
     )
 
     narration_text = narration_response.choices[0].message.content.strip()
     print(f"🗣️ Narration text: {narration_text}")
 
-    # Step 2 — generate TTS audio
+    # generating tts audio
     output_path = os.path.join(output_dir, filename)
 
     print("🎧 Generating voiceover MP3...")
     with client.audio.speech.with_streaming_response.create(
         model="gpt-4o-mini-tts",
-        voice="alloy",  # You can change to "verse", "sage", etc.
+        voice="alloy",
         input=narration_text,
     ) as response:
         response.stream_to_file(output_path)
@@ -244,14 +236,19 @@ def pipeline(user_query):
     manim_code = get_python_code(response)
     manim_command = get_manim_command(response)
 
+    #parallelizing the voiceover and rendering.
     start_time = time.perf_counter()
-    video_path = generate_manim_video(manim_code, manim_command)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_video = executor.submit(generate_manim_video, manim_code, manim_command)
+        future_audio = executor.submit(generate_voiceover_from_manim_code, manim_code)
+
+        # Wait for both to finish
+        video_path = future_video.result()
+        voiceover_file = future_audio.result()
+
     end_time = time.perf_counter()
-
-    print("ELAPSED TIME GENERATION:" + str(end_time - start_time))
-
-
-    voiceover_file = generate_voiceover_from_manim_code(manim_code)
+    print("ELAPSED TIME PARALLEL RENDER + VO:", end_time - start_time)
 
     return video_path, voiceover_file
 

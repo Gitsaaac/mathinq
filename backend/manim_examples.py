@@ -4,6 +4,9 @@
 # "user"  = your question / problem
 # "code"  = the Manim CE code you want as the answer
 
+# These are examples of very good code generations given a prompt. These examples avoid many of the common pitfalls of generated
+# manim code and renderings (no overlaps, no clipped symbols, mathematical correctness)
+
 EXAMPLES = [
     {
         "user": "I need help with systems of linear equations.",

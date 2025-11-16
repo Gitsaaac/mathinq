@@ -1,3 +1,4 @@
+#practice_problems.py
 import openai
 import os
 import re
@@ -13,6 +14,7 @@ client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 
 def format_practice_problems_prompt(user_query: str) -> str:
+    # Prompt for practice problem generation. Encouraging chain of thought style generation from GPT.
     return f"""You are a LLM made for education and your job is to suggest a practice problem based on the user query.
 Respond with a practice problem in LaTeX as well as the answer to the practice problem (also in LaTeX). Be sure that the answer to the problem
 is correct.
@@ -126,8 +128,7 @@ def _clean_latex_for_mathtext(expr: str) -> tuple[str, bool]:
 
 def latex_to_image_matplotlib(latex_expression: str, filename: str | None = None) -> str:
     """
-    Renders LaTeX-ish text to a PNG file and returns the file path.
-    Uses matplotlib's internal mathtext (no external LaTeX engine).
+    Using matplotlib to render cleaned latex expressions. In white because the app is dark theme.
     """
     if filename is None:
         tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
@@ -172,8 +173,7 @@ def latex_to_image_matplotlib(latex_expression: str, filename: str | None = None
 
 def render_problem(problem_and_answer: str) -> str:
     """
-    Extract the {{PROBLEM}} section and render it as a PNG.
-    Returns the PNG file path.
+    Render problem image
     """
     problem = extract_problem(problem_and_answer)
     if not problem:
@@ -184,8 +184,7 @@ def render_problem(problem_and_answer: str) -> str:
 
 def render_answer(problem_and_answer: str) -> str:
     """
-    Extract the {{ANSWER}} section and render it as a PNG.
-    Returns the PNG file path.
+    Render answer image
     """
     answer = extract_answer(problem_and_answer)
     if not answer:
@@ -196,8 +195,7 @@ def render_answer(problem_and_answer: str) -> str:
 
 def prob_ans_pipeline(user_query: str) -> tuple[str, str]:
     """
-    Given a user_query string, generate a practice problem + answer,
-    render both to PNG, and return (problem_png_path, answer_png_path).
+    pipeline of earlier functions
     """
     prob_ans = get_practice_problem(user_query)
     prob_png = render_problem(prob_ans)
