@@ -3,10 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 import uuid
 import os
+from pydantic import BaseModel
+from rlhf import init_db, log_sample, log_feedback
 
 from backend import pipeline  # your pipeline function
 
 app = FastAPI()
+init_db() #only creates if not exist
 
 # CORS so your frontend can call the API
 app.add_middleware(
@@ -53,11 +56,21 @@ def generate(query: str):
         os.rename(video_path, public_video_path)
         os.rename(audio_path, public_audio_path)
 
+        sample_id = log_sample(
+            prompt=query,
+            manim_code="",           # we aren't passing code right now
+            narration_text=None,     # not needed yet
+            video_path=public_video_path,
+            audio_path=public_audio_path,
+            meta={"source": "api"},  # optional
+        )
+
         print("✅ Returning file URLs…")
 
         return {
             "video_url": f"/video/{video_id}",
-            "audio_url": f"/audio/{audio_id}"
+            "audio_url": f"/audio/{audio_id}",
+            "sample_id": sample_id,
         }
 
     except Exception as e:
@@ -81,6 +94,25 @@ def serve_audio(filename: str):
         raise HTTPException(status_code=404, detail="Audio not found")
     return FileResponse(path, media_type="audio/mpeg", filename=filename)
 
+
+class FeedbackIn(BaseModel):
+    sample_id: str
+    rating: int            # +1 for thumbs up, -1 for thumbs down
+    comment: str | None = None
+
+
+@app.post("/feedback")
+def feedback(data: FeedbackIn):
+    if data.rating not in (1, -1):
+        raise HTTPException(status_code=400, detail="rating must be +1 or -1")
+
+    log_feedback(
+        sample_id=data.sample_id,
+        rating=data.rating,
+        comment=data.comment,
+        meta={"source": "frontend"},
+    )
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -81,7 +81,7 @@ def generate_manim_code(user_query):
         model="gpt-4.1",
         messages=messages,
         temperature=0,
-        max_tokens=1500,
+        max_tokens=2000,
     )
 
     gpt_response = response.choices[0].message.content

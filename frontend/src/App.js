@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect} from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 
 const BACKEND_URL = "http://localhost:8000"; // change if your backend is on a different host/port
@@ -9,6 +9,8 @@ function App() {
   const [audioUrl, setAudioUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sampleId, setSampleId] = useState(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const videoRef = useRef(null);
   const audioRef = useRef(null);
@@ -18,6 +20,8 @@ function App() {
     setError("");
     setVideoUrl("");
     setAudioUrl("");
+    setSampleId(null);
+    setFeedbackSubmitted(false); // reset feedback state for new video
 
     if (!prompt.trim()) {
       setError("Please enter a prompt.");
@@ -42,11 +46,35 @@ function App() {
       const data = await res.json();
       setVideoUrl(`${BACKEND_URL}${data.video_url}`);
       setAudioUrl(`${BACKEND_URL}${data.audio_url}`);
+      setSampleId(data.sample_id || null);
     } catch (err) {
       console.error(err);
       setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFeedback = async (rating) => {
+    if (!sampleId) return;
+
+    try {
+      await fetch(`${BACKEND_URL}/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sample_id: sampleId,
+          rating,       // +1 or -1
+          comment: null,
+        }),
+      });
+
+      // Immediately show the thank-you state
+      setFeedbackSubmitted(true);
+    } catch (err) {
+      console.error("Failed to send feedback:", err);
     }
   };
 
@@ -67,22 +95,10 @@ function App() {
     audioRef.current.pause();
   };
 
-  // Keep audio tightly synced to video while playing
-  const handleVideoTimeUpdate = () => {
-    if (!videoRef.current || !audioRef.current) return;
-    const v = videoRef.current;
-    const a = audioRef.current;
-    const diff = Math.abs(a.currentTime - v.currentTime);
-
-    // Adjust only if they drift more than a tiny threshold
-    if (diff > 0.1) {
-      a.currentTime = v.currentTime;
-    }
-  };
-
-    useEffect(() => {
+  // Default 1.5x speed for audio
+  useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.playbackRate = 1.5;   // 🔥 default 1.5× audio speed
+      audioRef.current.playbackRate = 1.5;
     }
   }, [audioUrl]);
 
@@ -167,24 +183,51 @@ function App() {
               <div className="output-placeholder">
                 <div className="placeholder-video" />
                 <p className="placeholder-text">
-                  Your explainer video will appear here after you submit a topic above.
+                  Your explainer video will appear here after you submit a topic
+                  above.
                 </p>
               </div>
             )}
 
             {/* Actual video once ready */}
             {!loading && videoUrl && (
-              <div className="video-wrapper">
-                <video
-                  ref={videoRef}
-                  src={videoUrl}
-                  controls
-                  muted = {true}
-                  onPlay={handleVideoPlay}
-                  onPause={handleVideoPause}
-                  // onTimeUpdate={handleVideoTimeUpdate}
-                />
-              </div>
+              <>
+                <div className="video-wrapper">
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    controls
+                    muted={true}
+                    onPlay={handleVideoPlay}
+                    onPause={handleVideoPause}
+                  />
+                </div>
+
+                {sampleId && !feedbackSubmitted && (
+                  <div className="feedback-row">
+                    <button
+                      type="button"
+                      className="secondary-button feedback-button"
+                      onClick={() => handleFeedback(1)}
+                    >
+                      👍 Helpful
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button feedback-button"
+                      onClick={() => handleFeedback(-1)}
+                    >
+                      👎 Not helpful
+                    </button>
+                  </div>
+                )}
+
+                {sampleId && feedbackSubmitted && (
+                  <p className="feedback-thanks">
+                    Thanks for your feedback 💚
+                  </p>
+                )}
+              </>
             )}
 
             {/* Hidden audio used only for sync */}
