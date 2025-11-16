@@ -23,3 +23,5 @@ pandas
 fastapi
 uvicorn
 python-multipart
+
+matplotlib
