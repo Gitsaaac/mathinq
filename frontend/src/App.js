@@ -139,10 +139,44 @@ function App() {
 
   // Default 1.5x speed for audio
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = 1.5;
+  const video = videoRef.current;
+  const audio = audioRef.current;
+
+  if (!video || !audio) return;
+
+  let metadataLoaded = 0;
+  
+  const trySync = () => {
+    if (metadataLoaded < 2) return;
+
+    const videoDuration = video.duration;
+    const audioDuration = audio.duration;
+
+    if (videoDuration && audioDuration) {
+      const rate = videoDuration / audioDuration;
+      audio.playbackRate = rate;
+      console.log("Final playbackRate =", rate);
     }
-  }, [audioUrl]);
+  };
+
+  const handleVideoLoaded = () => {
+    metadataLoaded += 1;
+    trySync();
+  };
+
+  const handleAudioLoaded = () => {
+    metadataLoaded += 1;
+    trySync();
+  };
+
+  video.addEventListener("loadedmetadata", handleVideoLoaded);
+  audio.addEventListener("loadedmetadata", handleAudioLoaded);
+
+  return () => {
+    video.removeEventListener("loadedmetadata", handleVideoLoaded);
+    audio.removeEventListener("loadedmetadata", handleAudioLoaded);
+  };
+}, [videoUrl, audioUrl]);
 
   const hasMedia = Boolean(videoUrl || audioUrl);
 

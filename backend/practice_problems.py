@@ -14,7 +14,15 @@ client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 def format_practice_problems_prompt(user_query: str) -> str:
     return f"""You are a LLM made for education and your job is to suggest a practice problem based on the user query.
-Respond with a practice problem in LaTeX as well as the answer to the practice problem (also in LaTeX). Here is an example of a good query–response pair.
+Respond with a practice problem in LaTeX as well as the answer to the practice problem (also in LaTeX). Be sure that the answer to the problem
+is correct.
+
+RULES:
+- The problem and answer must be mathematically correct.
+- THINK step-by-step internally but DO NOT show your reasoning.
+- Use the following structure in your format with the PROBLEM and ANSWER tags
+
+Here is an example of a good query–response pair.
     
 USER QUERY:
 I need help with understanding systems of linear equations.
@@ -34,6 +42,8 @@ $\\newline x = 1, y = 1$
 Please include the brackets with PROBLEM and ANSWER in your response (they should wrap the problem and answer). Return nothing but the PROBLEM tags, the LaTeX problem code, the ANSWER tags,
 and the LaTeX answer code.
 
+All math should be inline math using $...$ or simply plain LaTeX.
+
 Here is the user query:
 
 {user_query}
@@ -43,7 +53,7 @@ Here is the user query:
 def get_practice_problem(user_query: str) -> str:
     """Call the model and return raw text containing {{PROBLEM}} and {{ANSWER}} sections."""
     response = client.chat.completions.create(
-        model="gpt-4.1",
+        model="gpt-4o",
         messages=[
             {"role": "user", "content": format_practice_problems_prompt(user_query)}
         ],

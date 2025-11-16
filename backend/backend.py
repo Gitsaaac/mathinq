@@ -210,7 +210,7 @@ def generate_voiceover_from_manim_code(manim_code: str, output_dir="outputs", fi
         model="gpt-4.1",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
-        max_tokens=100,
+        max_tokens=150,
     )
 
     narration_text = narration_response.choices[0].message.content.strip()
