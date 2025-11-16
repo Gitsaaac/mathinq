@@ -28,7 +28,7 @@ Feel free to incorporate the layout manager into your code.
 
 
 Please include the bash command to run the script and the python code itself. In the bash command to render the code, choose a frame rate of 25.
-Please make the command start with manim -ql --fps 15
+Please make the command start with manim -ql -r 480, 270 --fps 10
 """
     )
 

@@ -23,6 +23,10 @@ function App() {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
 
+  // Store durations once metadata is loaded
+  const [videoDuration, setVideoDuration] = useState(null);
+  const [audioDuration, setAudioDuration] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -35,6 +39,10 @@ function App() {
     setPracticeProblemUrl("");
     setPracticeAnswerUrl("");
     setPracticeError("");
+
+    // reset durations for a new lesson
+    setVideoDuration(null);
+    setAudioDuration(null);
 
     if (!prompt.trim()) {
       setError("Please enter a prompt.");
@@ -137,46 +145,18 @@ function App() {
     audioRef.current.pause();
   };
 
-  // Default 1.5x speed for audio
+  // Once we know both durations, set audio playbackRate so audio length matches video length
   useEffect(() => {
-  const video = videoRef.current;
-  const audio = audioRef.current;
+    if (!audioRef.current) return;
+    if (!videoDuration || !audioDuration) return;
 
-  if (!video || !audio) return;
+    const rawRate = audioDuration / videoDuration; // shrink/expand audio to match video
+    // Clamp to something reasonable so it doesn't go insane
+    const rate = Math.min(Math.max(rawRate, 0.5), 3);
 
-  let metadataLoaded = 0;
-  
-  const trySync = () => {
-    if (metadataLoaded < 2) return;
-
-    const videoDuration = video.duration;
-    const audioDuration = audio.duration;
-
-    if (videoDuration && audioDuration) {
-      const rate = videoDuration / audioDuration;
-      audio.playbackRate = rate;
-      console.log("Final playbackRate =", rate);
-    }
-  };
-
-  const handleVideoLoaded = () => {
-    metadataLoaded += 1;
-    trySync();
-  };
-
-  const handleAudioLoaded = () => {
-    metadataLoaded += 1;
-    trySync();
-  };
-
-  video.addEventListener("loadedmetadata", handleVideoLoaded);
-  audio.addEventListener("loadedmetadata", handleAudioLoaded);
-
-  return () => {
-    video.removeEventListener("loadedmetadata", handleVideoLoaded);
-    audio.removeEventListener("loadedmetadata", handleAudioLoaded);
-  };
-}, [videoUrl, audioUrl]);
+    audioRef.current.playbackRate = rate + 0.1;
+    console.log("Final playbackRate =", rate);
+  }, [videoDuration, audioDuration]);
 
   const hasMedia = Boolean(videoUrl || audioUrl);
 
@@ -302,6 +282,10 @@ function App() {
                         muted={true}
                         onPlay={handleVideoPlay}
                         onPause={handleVideoPause}
+                        onLoadedMetadata={(e) => {
+                          setVideoDuration(e.target.duration);
+                          console.log("video duration =", e.target.duration);
+                        }}
                       />
                     </div>
 
@@ -333,7 +317,16 @@ function App() {
                 )}
 
                 {/* Hidden audio used only for sync */}
-                {audioUrl && <audio ref={audioRef} src={audioUrl} />}
+                {audioUrl && (
+                  <audio
+                    ref={audioRef}
+                    src={audioUrl}
+                    onLoadedMetadata={(e) => {
+                      setAudioDuration(e.target.duration);
+                      console.log("audio duration =", e.target.duration);
+                    }}
+                  />
+                )}
               </section>
             </>
           )}

@@ -36,10 +36,10 @@ $\\newline 3x - 4y = -1$
 {{PROBLEM}}
 
 {{ANSWER}}
-$\\newline x = 1, y = 1$
+$you would solve for the answer and then return here
 {{ANSWER}}
 
-Please include the brackets with PROBLEM and ANSWER in your response (they should wrap the problem and answer). Return nothing but the PROBLEM tags, the LaTeX problem code, the ANSWER tags,
+Please include the brackets with {{PROBLEM}} and {{ANSWER}} in your response (they should wrap the problem and answer). Return nothing but the PROBLEM tags, the LaTeX problem code, the ANSWER tags,
 and the LaTeX answer code.
 
 All math should be inline math using $...$ or simply plain LaTeX.
