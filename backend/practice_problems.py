@@ -15,7 +15,7 @@ client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
 def format_practice_problems_prompt(user_query: str) -> str:
     # Prompt for practice problem generation. Encouraging chain of thought style generation from GPT.
-    return f"""You are a LLM made for education and your job is to suggest a practice problem based on the user query.
+    return f"""You are a LLM made for education and your job is to suggest a practice problem based on the user query. If the query has a problem, suggest a different one.
 Respond with a practice problem in LaTeX as well as the answer to the practice problem (also in LaTeX). Be sure that the answer to the problem
 is correct.
 
