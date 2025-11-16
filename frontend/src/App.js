@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect} from "react";
 import "./App.css";
 
 const BACKEND_URL = "http://localhost:8000"; // change if your backend is on a different host/port
@@ -79,6 +79,12 @@ function App() {
       a.currentTime = v.currentTime;
     }
   };
+
+    useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = 1.5;   // 🔥 default 1.5× audio speed
+    }
+  }, [audioUrl]);
 
   const hasMedia = Boolean(videoUrl || audioUrl);
 
@@ -173,9 +179,10 @@ function App() {
                   ref={videoRef}
                   src={videoUrl}
                   controls
+                  muted = {true}
                   onPlay={handleVideoPlay}
                   onPause={handleVideoPause}
-                  onTimeUpdate={handleVideoTimeUpdate}
+                  // onTimeUpdate={handleVideoTimeUpdate}
                 />
               </div>
             )}

@@ -40,10 +40,23 @@ def generate_manim_code(user_query):
         {
             "role": "system",
             "content": (
-                "You output ONLY valid Manim CE Python code."
-                "Use exactly one Scene class."
-                "No backticks. No explanations. No comments."
-                "Do NOT use axes.get_tangent_line. If you want a tangent, use TangentLine(graph, x0, length=..., color=...); otherwise, just don't show the tangent."
+                "You output ONLY valid Manim CE Python code. "
+                "Use exactly one Scene class. "
+                "No explanations. No comments. "
+
+                "All mathematical notation MUST be rendered with MathTex or Tex. "
+                "Never put LaTeX delimiters like '$', '$$', '\\(', '\\)', '\\[', '\\]' "
+                "inside Text strings. "
+
+                "Examples of correct usage:\n"
+                "    eq = MathTex('x^2 + 3x + 2 = 0')\n"
+                "    label = VGroup(Text('Solve'), MathTex('x^2+3x+2=0')).arrange(RIGHT)\n"
+
+                "If you want plain English text, use Text with no LaTeX. "
+                "If you want math, use MathTex/Tex. Do NOT display raw '$$...$$' in the scene. "
+
+                "Do NOT use axes.get_tangent_line. If you want a tangent, use "
+                "TangentLine(graph, x0, length=..., color=...); otherwise, just don't show the tangent."
             ),
         },
     ]
@@ -182,7 +195,7 @@ def generate_voiceover_from_manim_code(manim_code: str, output_dir="outputs", fi
     You are an educational narrator. Based on the following Manim Python code, 
     write a clear, very concise spoken explanation (the manim animations will do most of the explaining) that could accompany 
     the animation for a math learner. Make it sound like a teacher explaining a concept. 
-    Get the timing correct in what you're saying and make the voiceover the same duration (roughly) as the video.
+    Get the timing correct in what you're saying and make the voiceover shorter than the video.
 
     Be sure to only include the actual spoken content and not any other text that isn't meant to actually be said.
 
@@ -197,7 +210,7 @@ def generate_voiceover_from_manim_code(manim_code: str, output_dir="outputs", fi
         model="gpt-4.1",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
-        max_tokens=200,
+        max_tokens=100,
     )
 
     narration_text = narration_response.choices[0].message.content.strip()
